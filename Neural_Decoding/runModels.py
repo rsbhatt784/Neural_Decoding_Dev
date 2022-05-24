@@ -81,27 +81,27 @@ def run_model(input, output, model, training_range, testing_range, valid_range, 
                 R2s_wc = get_R2_parts(y_valid,y_valid_predicted_wc)
             R2s.append(R2s_wc)
 
-        elif model == "Kalman":
-            #Declare model
-            model_kf=KalmanFilterDecoder(C=1) #There is one optional parameter (see ReadMe)
+        # elif model == "Kalman":
+        #     #Declare model
+        #     model_kf=KalmanFilterDecoder(C=1) #There is one optional parameter (see ReadMe)
 
-            #Fit model
-            model_kf.fit(X_train,y_train)
+        #     #Fit model
+        #     model_kf.fit(X_train,y_train)
 
-            #Get predictions
-            y_valid_predicted_kf=model_kf.predict(X_valid, y_valid)
+        #     #Get predictions
+        #     y_valid_predicted_kf=model_kf.predict(X_valid, y_valid)
 
-            #Get metrics of fit (see read me for more details on the differences between metrics)
-            # 1st and 2nd entries that correspond to the positions
-            if type_of_R2 == "score":
-                R2_kf = get_R2(y_valid, y_valid_predicted_kf)
-            else:
-                R2_kf = get_R2_parts(y_valid, y_valid_predicted_kf)
-            R2s.append(R2_kf)
+        #     #Get metrics of fit (see read me for more details on the differences between metrics)
+        #     # 1st and 2nd entries that correspond to the positions
+        #     if type_of_R2 == "score":
+        #         R2_kf = get_R2(y_valid, y_valid_predicted_kf)
+        #     else:
+        #         R2_kf = get_R2_parts(y_valid, y_valid_predicted_kf)
+        #     R2s.append(R2_kf)
 
-            # #Next I'll get the rho^2 (the pearson correlation squared)
-            # rho_kf=get_rho(y_valid, y_valid_predicted_kf)
-            # #print('rho2:',rho_kf[0:2]**2) #I'm just printing the rho^2's of the 1st and 2nd entries that correspond to the positions
-            # Rhos.append(rho_kf) 
+        #     # #Next I'll get the rho^2 (the pearson correlation squared)
+        #     # rho_kf=get_rho(y_valid, y_valid_predicted_kf)
+        #     # #print('rho2:',rho_kf[0:2]**2) #I'm just printing the rho^2's of the 1st and 2nd entries that correspond to the positions
+        #     # Rhos.append(rho_kf) 
 
     return R2s
