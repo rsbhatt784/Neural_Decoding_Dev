@@ -4,10 +4,8 @@
 import numpy as np
 from numpy.linalg import inv as inv #Used in kalman filter
 
-# from decoders import WienerFilterDecoder, WienerCascadeDecoder
-# from metrics import get_R2, get_rho
 from Neural_Decoding.decoders import WienerFilterDecoder, WienerCascadeDecoder, KalmanFilterDecoder
-from Neural_Decoding.metrics import get_R2, get_rho
+from Neural_Decoding.metrics import get_R2, get_rho, get_R2_parts
 
 def run_model(input, output, model, training_range, testing_range, valid_range, bins_before, bins_after):
    
@@ -59,7 +57,7 @@ def run_model(input, output, model, training_range, testing_range, valid_range, 
             y_valid_predicted_wf = model_wf.predict(X_valid)
 
             #Get metric of fit
-            R2s_wf = get_R2(y_valid,y_valid_predicted_wf)
+            R2s_wf = get_R2_parts(y_valid,y_valid_predicted_wf)
             R2s.append(R2s_wf)
         
         elif model == "WienerCasade":
@@ -73,7 +71,7 @@ def run_model(input, output, model, training_range, testing_range, valid_range, 
             y_valid_predicted_wc = model_wc.predict(X_valid)
 
             #Get metric of fit
-            R2s_wc = get_R2(y_valid,y_valid_predicted_wc)
+            R2s_wc = get_R2_parts(y_valid,y_valid_predicted_wc)
             R2s.append(R2s_wc)
 
         elif model == "Kalman":
@@ -88,7 +86,7 @@ def run_model(input, output, model, training_range, testing_range, valid_range, 
 
             #Get metrics of fit (see read me for more details on the differences between metrics)
             #First I'll get the R^2
-            R2_kf=get_R2(y_valid, y_valid_predicted_kf)
+            R2_kf=get_R2_parts(y_valid, y_valid_predicted_kf)
             #print('R2:',R2_kf[0:2]) #I'm just printing the R^2's of the 1st and 2nd entries that correspond to the positions
             R2s.append(R2_kf)
 
