@@ -68,7 +68,7 @@ def run_model_kf(input, output, training_range, testing_range, valid_range, type
         # 1st and 2nd entries that correspond to the positions
         if type_of_R2 == "score":
             R2_kf = get_R2(y_valid, y_valid_predicted)
-        else:
+        elif type_of_R2 == "parts":
             R2_kf = get_R2_parts(y_valid, y_valid_predicted)
         R2s.append(R2_kf)
 
