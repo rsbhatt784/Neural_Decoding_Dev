@@ -23,8 +23,9 @@ def get_R2(y_test,y_test_pred):
         y_mean=np.mean(y_test[:,i])
         R2=1-np.sum((y_test_pred[:,i]-y_test[:,i])**2)/np.sum((y_test[:,i]-y_mean)**2)
         R2_list.append(R2) #Append R2 of this output to the list
-    R2_array=np.array(R2_list)
-    return R2_array #Return an array of R2s
+    # R2_array=np.array(R2_list)
+    # return R2_array #Return an array of R2s
+    return R2_list
 
 ########## R-squared (R2) Components (nom and denom) ##########
 
