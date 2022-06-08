@@ -76,31 +76,11 @@ def run_model_kf(input, output, training_range, testing_range, valid_range, type
             R2_kf = get_R2_parts(y_valid, y_valid_predicted)
         R2s.append(R2_kf)
 
-        # if type_of_R2 == "parts" and type_of_test == "cross_bucket":
-        #     for c in range(len(input)):
-        #         cross_input = 
-        #         cross_output = 
     return R2s, models 
-        
-        # if type_of_test == "cross_bucket":
-        #     models.append(model)
-        
-        # elif type_of_test == "within_bucket":
-        #     #Get predictions
-        #     y_valid_predicted = model.predict(X_valid, y_valid)
-
-        #     #Get metrics of fit (see read me for more details on the differences between metrics)
-        #     # 1st and 2nd entries that correspond to the velocities
-        #     if type_of_R2 == "score": # Computing single-component FVAF
-        #         R2_kf = get_R2(y_valid, y_valid_predicted)
-        #     elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
-        #         R2_kf = get_R2_parts(y_valid, y_valid_predicted)
-        #     R2s.append(R2_kf)
-        
+    
 
 
-def cross_bucket_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):
- 
+def cross_buckets_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):
     """
     (SIKE) Just need X_valid and y_valid from the cross-bucket in order to predict its kinematics using model trained on the other bucket.
     """
@@ -178,25 +158,13 @@ def cross_bucket_test(models, input, output, training_range, testing_range, vali
                 Nomen[m].append(nom)
                 Denom[m].append(denom)
 
-        total_residual.append(1 - (sum(Nomen[m]) / sum(Denom[m])))
-        #totalResidual(m,1) = 1 - (sum(Nom(m,:)) / (sum(xDen(m,:)) + sum(yDen(m,:))) );         
-
-                # % Compute combined FVAF 
-                # Nomen = ((actualX - predX).^2) + ((actualY - predY).^2);
-                # xDenom = sum((actualX - mean(actualX)).^2);
-                # yDenom = sum((actualY - mean(actualY)).^2);
-                # combinedFVAF(m,c) = 1 - (sum(Nomen)/(xDenom + yDenom));
-                
-                # xDen(m,c) = xDenom;
-                # yDen(m,c) = yDenom;
-                # Nom(m,c) = sum(Nomen);
+        total_residual.append(1 - (sum(Nomen[m]) / sum(Denom[m])))      
 
     return XY_FVAF, total_residual
 
 
 def cross_polarity_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):   
     """
-    (SIKE) Just need X_valid and y_valid from the cross-bucket in order to predict its kinematics using model trained on the other bucket.
     """
     
     XY_FVAF = []
@@ -270,7 +238,6 @@ def cross_polarity_test(models, input, output, training_range, testing_range, va
 
 def complete_opposite_bucket_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):   
     """
-    (SIKE) Just need X_valid and y_valid from the cross-bucket in order to predict its kinematics using model trained on the other bucket.
     """
     
     XY_FVAF = []
