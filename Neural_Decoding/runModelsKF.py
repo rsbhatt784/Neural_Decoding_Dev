@@ -163,96 +163,108 @@ def cross_buckets_test(models, input, output, training_range, testing_range, val
     return XY_FVAF, total_residual
 
 
-def cross_polarity_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):   
+def cross_polarity_test(models, input, output, training_range, testing_range, valid_range, type_of_R2, frag_type):   
     """
     """
     
-    XY_FVAF = []
-    for m in range(len(models)): # but in reality, nModels should/will always be the same as nCrossBuckets
-       
-        # n is the index of the bucket with opposite polarity 
-        if m <= 7:
-            n = m + 8
-        else:
-            n = m - 8
+    # Can only run this test for AD and HV fragments, NOT VM fragments 
+    if frag_type == "AD" or frag_type == "HV":    
 
-        curr_input = input[n]
-        curr_output = output[n]
-        num_examples=curr_input.shape[0] # nRows (b/c nCols = number of units)
-                
-        #Note that each range has a buffer of 1 bin at the beginning and end
-        #This makes it so that the different sets don't include overlapping data
-        training_set=np.arange(int(np.round(training_range[0]*num_examples))+1,int(np.round(training_range[1]*num_examples))-1)
-        testing_set=np.arange(int(np.round(testing_range[0]*num_examples))+1,int(np.round(testing_range[1]*num_examples))-1)
-        valid_set=np.arange(int(np.round(valid_range[0]*num_examples))+1,int(np.round(valid_range[1]*num_examples))-1)  
+        XY_FVAF = []
+        for m in range(len(models)): # but in reality, nModels should/will always be the same as nCrossBuckets
+            # n is the index of the bucket with opposite polarity 
+            if m <= 7:
+                n = m + 8
+            else:
+                n = m - 8
 
-        #Get training data
-        X_train=curr_input[training_set,:]
-        y_train=curr_output[training_set,:]
+            curr_input = input[n]
+            curr_output = output[n]
+            num_examples=curr_input.shape[0] # nRows (b/c nCols = number of units)
+                    
+            #Note that each range has a buffer of 1 bin at the beginning and end
+            #This makes it so that the different sets don't include overlapping data
+            training_set=np.arange(int(np.round(training_range[0]*num_examples))+1,int(np.round(training_range[1]*num_examples))-1)
+            testing_set=np.arange(int(np.round(testing_range[0]*num_examples))+1,int(np.round(testing_range[1]*num_examples))-1)
+            valid_set=np.arange(int(np.round(valid_range[0]*num_examples))+1,int(np.round(valid_range[1]*num_examples))-1)  
 
-        #Get testing data
-        X_test=curr_input[testing_set,:]
-        y_test=curr_output[testing_set,:]
+            #Get training data
+            X_train=curr_input[training_set,:]
+            y_train=curr_output[training_set,:]
 
-        #Get validation data
-        X_valid=curr_input[valid_set,:]
-        y_valid=curr_output[valid_set,:]  
+            #Get testing data
+            X_test=curr_input[testing_set,:]
+            y_test=curr_output[testing_set,:]
 
-        #Z-score "X" inputs. 
-        X_train_mean=np.nanmean(X_train,axis=0)
-        X_train_std=np.nanstd(X_train,axis=0)
-        X_train=(X_train-X_train_mean)/X_train_std
-        X_test=(X_test-X_train_mean)/X_train_std
-        X_valid=(X_valid-X_train_mean)/X_train_std
+            #Get validation data
+            X_valid=curr_input[valid_set,:]
+            y_valid=curr_output[valid_set,:]  
 
-        #Zero-center outputs
-        y_train_mean=np.mean(y_train,axis=0)
-        y_train=y_train-y_train_mean
-        y_test=y_test-y_train_mean
-        y_valid=y_valid-y_train_mean
-        
-        #Get predictions
-        y_valid_predicted = models[m].predict(X_valid, y_valid)
+            #Z-score "X" inputs. 
+            X_train_mean=np.nanmean(X_train,axis=0)
+            X_train_std=np.nanstd(X_train,axis=0)
+            X_train=(X_train-X_train_mean)/X_train_std
+            X_test=(X_test-X_train_mean)/X_train_std
+            X_valid=(X_valid-X_train_mean)/X_train_std
 
-        #Get metrics of fit (see read me for more details on the differences between metrics)
-        # 1st and 2nd entries that correspond to the velocities
-        if type_of_R2 == "score": # Computing single-component FVAF
-            R2_kf = get_R2(y_valid, y_valid_predicted)
-        elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
-            R2_kf = get_R2_parts(y_valid, y_valid_predicted)
+            #Zero-center outputs
+            y_train_mean=np.mean(y_train,axis=0)
+            y_train=y_train-y_train_mean
+            y_test=y_test-y_train_mean
+            y_valid=y_valid-y_train_mean
+            
+            #Get predictions
+            y_valid_predicted = models[m].predict(X_valid, y_valid)
 
-        # Compute combined XY_FVAF
-        vel_x_nom = R2_kf[0][0] # dim = (nom, x_vel)
-        vel_x_denom = R2_kf[1][0] # dim = (denom, x_vel)
-        vel_y_nom = R2_kf[0][1] # dim = (nom, y_vel)
-        vel_y_denom = R2_kf[1][1] # dim = (denom, y_vel)
-        nom = vel_x_nom + vel_y_nom
-        denom = vel_x_denom + vel_y_denom
+            #Get metrics of fit (see read me for more details on the differences between metrics)
+            # 1st and 2nd entries that correspond to the velocities
+            if type_of_R2 == "score": # Computing single-component FVAF
+                R2_kf = get_R2(y_valid, y_valid_predicted)
+            elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
+                R2_kf = get_R2_parts(y_valid, y_valid_predicted)
 
-        combined_FVAF = 1 - (nom / denom)
-        XY_FVAF.append(combined_FVAF)
+            # Compute combined XY_FVAF
+            vel_x_nom = R2_kf[0][0] # dim = (nom, x_vel)
+            vel_x_denom = R2_kf[1][0] # dim = (denom, x_vel)
+            vel_y_nom = R2_kf[0][1] # dim = (nom, y_vel)
+            vel_y_denom = R2_kf[1][1] # dim = (denom, y_vel)
+            nom = vel_x_nom + vel_y_nom
+            denom = vel_x_denom + vel_y_denom
+
+            combined_FVAF = 1 - (nom / denom)
+            XY_FVAF.append(combined_FVAF)
+
+    elif frag_type == "VM":
+        XY_FVAF = []
 
     return XY_FVAF
 
 
 
-def complete_opposite_bucket_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):   
+def complete_opposite_bucket_test(models, input, output, training_range, testing_range, valid_range, type_of_R2, frag_type):   
     """
     """
     
     XY_FVAF = []
     for m in range(len(models)): # but in reality, nModels should/will always be the same as nCrossBuckets
         
-        # n is the index of the bucket with opposite direction and polarity 
-        # (based on the 'combos' variable which specifies bucket labels)
-        if m >= 0 and m <= 3:    
-            n = m + 12
-        elif m >= 4 and m <= 7:
-            n = m + 4
-        elif m >= 8 and m <= 11:
-            n = m - 4
-        elif m >= 12 and m <= 15:
-            n = m - 12
+        if frag_type == "AD" or frag_type == "HV":    
+            # n is the index of the bucket with opposite direction and polarity 
+            # (based on the 'combos' variable which specifies bucket labels)
+            if m >= 0 and m <= 3:    
+                n = m + 12
+            elif m >= 4 and m <= 7:
+                n = m + 4
+            elif m >= 8 and m <= 11:
+                n = m - 4
+            elif m >= 12 and m <= 15:
+                n = m - 12
+        
+        elif frag_type == "VM":
+            if m >= 0 and m <=3:
+                n = m + 4
+            elif m >=4 and m <=7:
+                n = m - 4
 
         curr_input = input[n]
         curr_output = output[n]
