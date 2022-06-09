@@ -145,11 +145,10 @@ def cross_buckets_test(models, input, output, training_range, testing_range, val
 def cross_polarity_test(models, input, output, training_range, testing_range, valid_range, type_of_R2, frag_type):   
     """
     """
-
+    XY_FVAF = []
     # Can only run this test for AD and HV fragments, NOT VM fragments 
-    if frag_type == "AD" or frag_type == "HV":    
+    if frag_type == "AD" or frag_type == "HV" or frag_type == "Rand":    
 
-        XY_FVAF = []
         for m in range(len(models)): # but in reality, nModels should/will always be the same as nCrossBuckets
             # n is the index of the bucket with opposite polarity 
             if m <= 7:
@@ -162,7 +161,7 @@ def cross_polarity_test(models, input, output, training_range, testing_range, va
             num_examples=curr_input.shape[0] # nRows (b/c nCols = number of units)
 
             # Split input, output into training, testing, and validation sets 
-            _, _, _, _, X_valid, y_valid = split_dataset(curr_input, curr_output, training_range, testing_range, valid_range, num_examples)        
+            X_train, y_train, X_test, y_test, X_valid, y_valid = split_dataset(curr_input, curr_output, training_range, testing_range, valid_range, num_examples)        
             
             #Get predictions
             y_valid_predicted = models[m].predict(X_valid, y_valid)
@@ -199,7 +198,7 @@ def complete_opposite_bucket_test(models, input, output, training_range, testing
     XY_FVAF = []
     for m in range(len(models)): # but in reality, nModels should/will always be the same as nCrossBuckets
         
-        if frag_type == "AD" or frag_type == "HV":    
+        if frag_type == "AD" or frag_type == "HV" or frag_type == "Rand":    
             # n is the index of the bucket with opposite direction and polarity 
             # (based on the 'combos' variable which specifies bucket labels)
             if m >= 0 and m <= 3:    
@@ -222,7 +221,7 @@ def complete_opposite_bucket_test(models, input, output, training_range, testing
         num_examples=curr_input.shape[0] # nRows (b/c nCols = number of units)
 
         # Split input, output into training, testing, and validation sets 
-        _, _, _, _, X_valid, y_valid = split_dataset(curr_input, curr_output, training_range, testing_range, valid_range, num_examples)  
+        X_train, y_train, X_test, y_test, X_valid, y_valid = split_dataset(curr_input, curr_output, training_range, testing_range, valid_range, num_examples)  
         
         #Get predictions
         y_valid_predicted = models[m].predict(X_valid, y_valid)
