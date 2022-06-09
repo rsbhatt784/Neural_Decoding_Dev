@@ -7,6 +7,48 @@ from numpy.linalg import inv as inv #Used in kalman filter
 from Neural_Decoding.decoders import KalmanFilterDecoder
 from Neural_Decoding.metrics import get_R2, get_rho, get_R2_parts
 
+def split_dataset(curr_input, curr_output, training_range, testing_range, valid_range, num_examples):
+
+    #Note that each range has a buffer of 1 bin at the beginning and end
+    #This makes it so that the different sets don't include overlapping data
+    training_set=np.arange(int(np.round(training_range[0]*num_examples))+1,int(np.round(training_range[1]*num_examples))-1)
+    testing_set=np.arange(int(np.round(testing_range[0]*num_examples))+1,int(np.round(testing_range[1]*num_examples))-1)
+    valid_set=np.arange(int(np.round(valid_range[0]*num_examples))+1,int(np.round(valid_range[1]*num_examples))-1)      
+
+    # #Note that each range has a buffer of"bins_before" bins at the beginning, and "bins_after" bins at the end
+    # #This makes it so that the different sets don't include overlapping neural data
+    # training_set=np.arange(int(np.round(training_range[0]*num_examples))+bins_before,int(np.round(training_range[1]*num_examples))-bins_after)
+    # testing_set=np.arange(int(np.round(testing_range[0]*num_examples))+bins_before,int(np.round(testing_range[1]*num_examples))-bins_after)
+    # valid_set=np.arange(int(np.round(valid_range[0]*num_examples))+bins_before,int(np.round(valid_range[1]*num_examples))-bins_after)
+
+    #Get training data
+    X_train=curr_input[training_set,:]
+    y_train=curr_output[training_set,:]
+
+    #Get testing data
+    X_test=curr_input[testing_set,:]
+    y_test=curr_output[testing_set,:]
+
+    #Get validation data
+    X_valid=curr_input[valid_set,:]
+    y_valid=curr_output[valid_set,:]
+
+    #Z-score "X" inputs. 
+    X_train_mean=np.nanmean(X_train,axis=0)
+    X_train_std=np.nanstd(X_train,axis=0)
+    X_train=(X_train-X_train_mean)/X_train_std
+    X_test=(X_test-X_train_mean)/X_train_std
+    X_valid=(X_valid-X_train_mean)/X_train_std
+
+    #Zero-center outputs
+    y_train_mean=np.mean(y_train,axis=0)
+    y_train=y_train-y_train_mean
+    y_test=y_test-y_train_mean
+    y_valid=y_valid-y_train_mean
+
+    return X_train, y_train, X_test, y_test, X_valid, y_valid
+    
+
 def run_model_kf(input, output, training_range, testing_range, valid_range, type_of_R2):
    
     R2s = []
@@ -18,43 +60,9 @@ def run_model_kf(input, output, training_range, testing_range, valid_range, type
 
         # #Number of examples after taking into account bins removed for lag alignment
         # num_examples_kf=X_kf.shape[0]
-                
-        #Note that each range has a buffer of 1 bin at the beginning and end
-        #This makes it so that the different sets don't include overlapping data
-        training_set=np.arange(int(np.round(training_range[0]*num_examples))+1,int(np.round(training_range[1]*num_examples))-1)
-        testing_set=np.arange(int(np.round(testing_range[0]*num_examples))+1,int(np.round(testing_range[1]*num_examples))-1)
-        valid_set=np.arange(int(np.round(valid_range[0]*num_examples))+1,int(np.round(valid_range[1]*num_examples))-1)      
 
-        # #Note that each range has a buffer of"bins_before" bins at the beginning, and "bins_after" bins at the end
-        # #This makes it so that the different sets don't include overlapping neural data
-        # training_set=np.arange(int(np.round(training_range[0]*num_examples))+bins_before,int(np.round(training_range[1]*num_examples))-bins_after)
-        # testing_set=np.arange(int(np.round(testing_range[0]*num_examples))+bins_before,int(np.round(testing_range[1]*num_examples))-bins_after)
-        # valid_set=np.arange(int(np.round(valid_range[0]*num_examples))+bins_before,int(np.round(valid_range[1]*num_examples))-bins_after)
-
-        #Get training data
-        X_train=curr_input[training_set,:]
-        y_train=curr_output[training_set,:]
-
-        #Get testing data
-        X_test=curr_input[testing_set,:]
-        y_test=curr_output[testing_set,:]
-
-        #Get validation data
-        X_valid=curr_input[valid_set,:]
-        y_valid=curr_output[valid_set,:]
-
-        #Z-score "X" inputs. 
-        X_train_mean=np.nanmean(X_train,axis=0)
-        X_train_std=np.nanstd(X_train,axis=0)
-        X_train=(X_train-X_train_mean)/X_train_std
-        X_test=(X_test-X_train_mean)/X_train_std
-        X_valid=(X_valid-X_train_mean)/X_train_std
-
-        #Zero-center outputs
-        y_train_mean=np.mean(y_train,axis=0)
-        y_train=y_train-y_train_mean
-        y_test=y_test-y_train_mean
-        y_valid=y_valid-y_train_mean
+        # Split input, output into training, testing, and validation sets 
+        X_train, y_train, X_test, y_test, X_valid, y_valid = split_dataset(curr_input, curr_output, training_range, testing_range, valid_range, num_examples)
 
         #Declare model
         model = KalmanFilterDecoder(C=1) #There is one optional parameter (see ReadMe)
@@ -79,7 +87,6 @@ def run_model_kf(input, output, training_range, testing_range, valid_range, type
     return R2s, models 
     
 
-
 def cross_buckets_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):
     """
     (SIKE) Just need X_valid and y_valid from the cross-bucket in order to predict its kinematics using model trained on the other bucket.
@@ -99,37 +106,9 @@ def cross_buckets_test(models, input, output, training_range, testing_range, val
                 curr_input = input[c]
                 curr_output = output[c]
                 num_examples=curr_input.shape[0] # nRows (b/c nCols = number of units)
-                    
-                #Note that each range has a buffer of 1 bin at the beginning and end
-                #This makes it so that the different sets don't include overlapping data
-                training_set=np.arange(int(np.round(training_range[0]*num_examples))+1,int(np.round(training_range[1]*num_examples))-1)
-                testing_set=np.arange(int(np.round(testing_range[0]*num_examples))+1,int(np.round(testing_range[1]*num_examples))-1)
-                valid_set=np.arange(int(np.round(valid_range[0]*num_examples))+1,int(np.round(valid_range[1]*num_examples))-1)  
 
-                #Get training data
-                X_train=curr_input[training_set,:]
-                y_train=curr_output[training_set,:]
-
-                #Get testing data
-                X_test=curr_input[testing_set,:]
-                y_test=curr_output[testing_set,:]
-
-                #Get validation data
-                X_valid=curr_input[valid_set,:]
-                y_valid=curr_output[valid_set,:]  
-
-                #Z-score "X" inputs. 
-                X_train_mean=np.nanmean(X_train,axis=0)
-                X_train_std=np.nanstd(X_train,axis=0)
-                X_train=(X_train-X_train_mean)/X_train_std
-                X_test=(X_test-X_train_mean)/X_train_std
-                X_valid=(X_valid-X_train_mean)/X_train_std
-
-                #Zero-center outputs
-                y_train_mean=np.mean(y_train,axis=0)
-                y_train=y_train-y_train_mean
-                y_test=y_test-y_train_mean
-                y_valid=y_valid-y_train_mean
+                # Split input, output into training, testing, and validation sets 
+                X_train, y_train, X_test, y_test, X_valid, y_valid = split_dataset(curr_input, curr_output, training_range, testing_range, valid_range, num_examples)
                 
                 #Get predictions
                 y_valid_predicted = models[m].predict(X_valid, y_valid)
@@ -166,7 +145,7 @@ def cross_buckets_test(models, input, output, training_range, testing_range, val
 def cross_polarity_test(models, input, output, training_range, testing_range, valid_range, type_of_R2, frag_type):   
     """
     """
-    
+
     # Can only run this test for AD and HV fragments, NOT VM fragments 
     if frag_type == "AD" or frag_type == "HV":    
 
@@ -181,37 +160,9 @@ def cross_polarity_test(models, input, output, training_range, testing_range, va
             curr_input = input[n]
             curr_output = output[n]
             num_examples=curr_input.shape[0] # nRows (b/c nCols = number of units)
-                    
-            #Note that each range has a buffer of 1 bin at the beginning and end
-            #This makes it so that the different sets don't include overlapping data
-            training_set=np.arange(int(np.round(training_range[0]*num_examples))+1,int(np.round(training_range[1]*num_examples))-1)
-            testing_set=np.arange(int(np.round(testing_range[0]*num_examples))+1,int(np.round(testing_range[1]*num_examples))-1)
-            valid_set=np.arange(int(np.round(valid_range[0]*num_examples))+1,int(np.round(valid_range[1]*num_examples))-1)  
 
-            #Get training data
-            X_train=curr_input[training_set,:]
-            y_train=curr_output[training_set,:]
-
-            #Get testing data
-            X_test=curr_input[testing_set,:]
-            y_test=curr_output[testing_set,:]
-
-            #Get validation data
-            X_valid=curr_input[valid_set,:]
-            y_valid=curr_output[valid_set,:]  
-
-            #Z-score "X" inputs. 
-            X_train_mean=np.nanmean(X_train,axis=0)
-            X_train_std=np.nanstd(X_train,axis=0)
-            X_train=(X_train-X_train_mean)/X_train_std
-            X_test=(X_test-X_train_mean)/X_train_std
-            X_valid=(X_valid-X_train_mean)/X_train_std
-
-            #Zero-center outputs
-            y_train_mean=np.mean(y_train,axis=0)
-            y_train=y_train-y_train_mean
-            y_test=y_test-y_train_mean
-            y_valid=y_valid-y_train_mean
+            # Split input, output into training, testing, and validation sets 
+            _, _, _, _, X_valid, y_valid = split_dataset(curr_input, curr_output, training_range, testing_range, valid_range, num_examples)        
             
             #Get predictions
             y_valid_predicted = models[m].predict(X_valid, y_valid)
@@ -269,37 +220,9 @@ def complete_opposite_bucket_test(models, input, output, training_range, testing
         curr_input = input[n]
         curr_output = output[n]
         num_examples=curr_input.shape[0] # nRows (b/c nCols = number of units)
-                
-        #Note that each range has a buffer of 1 bin at the beginning and end
-        #This makes it so that the different sets don't include overlapping data
-        training_set=np.arange(int(np.round(training_range[0]*num_examples))+1,int(np.round(training_range[1]*num_examples))-1)
-        testing_set=np.arange(int(np.round(testing_range[0]*num_examples))+1,int(np.round(testing_range[1]*num_examples))-1)
-        valid_set=np.arange(int(np.round(valid_range[0]*num_examples))+1,int(np.round(valid_range[1]*num_examples))-1)  
 
-        #Get training data
-        X_train=curr_input[training_set,:]
-        y_train=curr_output[training_set,:]
-
-        #Get testing data
-        X_test=curr_input[testing_set,:]
-        y_test=curr_output[testing_set,:]
-
-        #Get validation data
-        X_valid=curr_input[valid_set,:]
-        y_valid=curr_output[valid_set,:]  
-
-        #Z-score "X" inputs. 
-        X_train_mean=np.nanmean(X_train,axis=0)
-        X_train_std=np.nanstd(X_train,axis=0)
-        X_train=(X_train-X_train_mean)/X_train_std
-        X_test=(X_test-X_train_mean)/X_train_std
-        X_valid=(X_valid-X_train_mean)/X_train_std
-
-        #Zero-center outputs
-        y_train_mean=np.mean(y_train,axis=0)
-        y_train=y_train-y_train_mean
-        y_test=y_test-y_train_mean
-        y_valid=y_valid-y_train_mean
+        # Split input, output into training, testing, and validation sets 
+        _, _, _, _, X_valid, y_valid = split_dataset(curr_input, curr_output, training_range, testing_range, valid_range, num_examples)  
         
         #Get predictions
         y_valid_predicted = models[m].predict(X_valid, y_valid)
