@@ -312,10 +312,6 @@ class KalmanFilterRegression(object):
 
 
 
-
-
-
-
 ##################### DENSE (FULLY-CONNECTED) NEURAL NETWORK ##########################
 
 class DenseNNRegression(object):
