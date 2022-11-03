@@ -246,11 +246,13 @@ class KalmanFilterRegression(object):
         #In our case, this is the transition from one kinematic state to the next
         X2 = X[:,1:]
         X1 = X[:,0:nt-1]
+        # A=X2*X1.T*inv(X1*X1.T).astype(float) #Transition matrix
         A=X2*X1.T*inv(X1*X1.T) #Transition matrix
         W=(X2-A*X1)*(X2-A*X1).T/(nt-1)/self.C #Covariance of transition matrix. Note we divide by nt-1 since only nt-1 points were used in the computation (that's the length of X1 and X2). We also introduce the extra parameter C here.
 
         #Calculate the measurement matrix (from x_t to z_t) using least-squares, and compute its covariance
         #In our case, this is the transformation from kinematics to spikes
+        # H = Z*X.T*(inv(X*X.T).astype(float)) #Measurement matrix
         H = Z*X.T*(inv(X*X.T)) #Measurement matrix
         Q = ((Z - H*X)*((Z - H*X).T)) / nt #Covariance of measurement matrix
         params=[A,W,H,Q]
@@ -301,6 +303,7 @@ class KalmanFilterRegression(object):
             state_m=A*state
 
             #Do second part of state update - based on measurement matrix
+            # K=P_m*H.T*inv(H*P_m*H.T+Q).astype(float) #Calculate Kalman gain
             K=P_m*H.T*inv(H*P_m*H.T+Q) #Calculate Kalman gain
             P=(np.matrix(np.eye(num_states))-K*H)*P_m
             state=state_m+K*(Z[:,t+1]-H*state_m)

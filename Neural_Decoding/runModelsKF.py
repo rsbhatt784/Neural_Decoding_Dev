@@ -2,7 +2,8 @@
 
 # Import models 
 import numpy as np
-from numpy.linalg import inv as inv #Used in kalman filter
+from numpy.linalg import inv as inv # Used in kalman filter
+from sklearn.model_selection import KFold # Used for 10-fold cross validation
 
 from Neural_Decoding.decoders import KalmanFilterDecoder
 from Neural_Decoding.metrics import get_R2, get_rho, get_R2_parts
@@ -47,7 +48,7 @@ def split_dataset(curr_input, curr_output, training_range, testing_range, valid_
     y_valid=y_valid-y_train_mean
 
     return X_train, y_train, X_test, y_test, X_valid, y_valid
-    
+
 
 def run_model_kf(input, output, training_range, testing_range, valid_range, type_of_R2):
    
@@ -85,7 +86,41 @@ def run_model_kf(input, output, training_range, testing_range, valid_range, type
         R2s.append(R2_kf)
 
     return R2s, models 
+
+
+def run_model_kf_cv(X_train, y_train, X_test, y_test, type_of_R2):
+   
+    R2s = []
+    models = []
+    for i in range(len(X_train)):
+        curr_X_train = X_train[i]
+        curr_y_train = y_train[i]
+        curr_X_test = X_test[i]
+        curr_y_test = y_test[i]
+
+        #Declare model
+        model = KalmanFilterDecoder(C=1) #There is one optional parameter (see ReadMe)
+
+        #Fit model
+        model.fit(curr_X_train, curr_y_train)
+        
+        #Save fitted models for later (i.e. cross-bucket tests)
+        models.append(model)
     
+        #Get predictions
+        curr_y_test_predicted = model.predict(curr_X_test, curr_y_test)
+
+        #Get metrics of fit (see read me for more details on the differences between metrics)
+        # 1st and 2nd entries that correspond to the velocities
+        if type_of_R2 == "score": # Computing single-component FVAF
+            R2_kf = get_R2(curr_y_test, curr_y_test_predicted)
+        elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
+            R2_kf = get_R2_parts(curr_y_test, curr_y_test_predicted)
+        R2s.append(R2_kf)
+
+    return R2s, models 
+
+
 
 def cross_buckets_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):
     """
