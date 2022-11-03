@@ -121,7 +121,6 @@ def run_model_kf_cv(X_train, y_train, X_test, y_test, type_of_R2):
     return R2s, models 
 
 
-
 def cross_buckets_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):
     """
     (SIKE) Just need X_valid and y_valid from the cross-bucket in order to predict its kinematics using model trained on the other bucket.
@@ -177,6 +176,53 @@ def cross_buckets_test(models, input, output, training_range, testing_range, val
     return XY_FVAF, total_residual
 
 
+def cross_buckets_test_cv(models, X_test, y_test, type_of_R2):
+    """
+    (SIKE) Just need X_valid and y_valid from the cross-bucket in order to predict its kinematics using model trained on the other bucket.
+    """
+    Nomen = [[] for i in range(len(X_test))]
+    Denom = [[] for i in range(len(X_test))]
+    total_residual = []
+    
+    for m in range(len(models)): # but in reality, nModels should/will always be the same as nCrossBuckets
+        R2s = []
+        for c in range(len(X_test)):
+            if m == c: 
+                continue 
+            else: 
+                curr_X_test = X_test[c]
+                curr_y_test = y_test[c]
+                
+                #Get predictions
+                curr_y_test_predicted = models[m].predict(curr_X_test, curr_y_test)
+
+                #Get metrics of fit (see read me for more details on the differences between metrics)
+                # 1st and 2nd entries that correspond to the velocities
+                if type_of_R2 == "score": # Computing single-component FVAF
+                    R2_kf = get_R2(curr_y_test, curr_y_test_predicted)
+                elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
+                    R2_kf = get_R2_parts(curr_y_test, curr_y_test_predicted)
+                R2s.append(R2_kf)
+
+                # Compute combined XY_FVAF
+                vel_x_nom = R2_kf[0][0] # dim = (nom, x_vel)
+                vel_x_denom = R2_kf[1][0] # dim = (denom, x_vel)
+                vel_y_nom = R2_kf[0][1] # dim = (nom, y_vel)
+                vel_y_denom = R2_kf[1][1] # dim = (denom, y_vel)
+                nom = vel_x_nom + vel_y_nom
+                denom = vel_x_denom + vel_y_denom
+
+                # combined_FVAF = 1 - (nom / denom)
+                # XY_FVAF[m].append(combined_FVAF)
+
+                Nomen[m].append(nom)
+                Denom[m].append(denom)
+
+        total_residual.append(1 - (sum(Nomen[m]) / sum(Denom[m])))      
+
+    return total_residual
+
+
 def cross_polarity_test(models, input, output, training_range, testing_range, valid_range, type_of_R2, frag_type):   
     """
     """
@@ -224,12 +270,53 @@ def cross_polarity_test(models, input, output, training_range, testing_range, va
 
     return XY_FVAF
 
+def opposite_polarity_test_cv(models, X_test, y_test, type_of_R2, frag_type):   
+    """
+    """
+    XY_FVAF = []
+    # Can only run this test for AD and HV fragments, NOT VM fragments 
+    if frag_type == "AD" or frag_type == "HV" or frag_type == "Rand":    
+
+        for m in range(len(models)): # but in reality, nModels should/will always be the same as nCrossBuckets
+            # n is the index of the bucket with opposite polarity 
+            if m <= 7:
+                n = m + 8
+            else:
+                n = m - 8
+
+            curr_X_test = X_test[n]
+            curr_y_test = y_test[n]       
+            
+            #Get predictions
+            curr_y_test_predicted = models[m].predict(curr_X_test, curr_y_test)
+
+            #Get metrics of fit (see read me for more details on the differences between metrics)
+            # 1st and 2nd entries that correspond to the velocities
+            if type_of_R2 == "score": # Computing single-component FVAF
+                R2_kf = get_R2(curr_y_test, curr_y_test_predicted)
+            elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
+                R2_kf = get_R2_parts(curr_y_test, curr_y_test_predicted)
+
+            # Compute combined XY_FVAF
+            vel_x_nom = R2_kf[0][0] # dim = (nom, x_vel)
+            vel_x_denom = R2_kf[1][0] # dim = (denom, x_vel)
+            vel_y_nom = R2_kf[0][1] # dim = (nom, y_vel)
+            vel_y_denom = R2_kf[1][1] # dim = (denom, y_vel)
+            nom = vel_x_nom + vel_y_nom
+            denom = vel_x_denom + vel_y_denom
+
+            combined_FVAF = 1 - (nom / denom)
+            XY_FVAF.append(combined_FVAF)
+
+    elif frag_type == "VM":
+        XY_FVAF = []
+
+    return XY_FVAF
 
 
 def complete_opposite_bucket_test(models, input, output, training_range, testing_range, valid_range, type_of_R2, frag_type):   
     """
     """
-    
     XY_FVAF = []
     for m in range(len(models)): # but in reality, nModels should/will always be the same as nCrossBuckets
         
@@ -267,6 +354,56 @@ def complete_opposite_bucket_test(models, input, output, training_range, testing
             R2_kf = get_R2(y_valid, y_valid_predicted)
         elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
             R2_kf = get_R2_parts(y_valid, y_valid_predicted)
+
+        # Compute combined XY_FVAF
+        vel_x_nom = R2_kf[0][0] # dim = (nom, x_vel)
+        vel_x_denom = R2_kf[1][0] # dim = (denom, x_vel)
+        vel_y_nom = R2_kf[0][1] # dim = (nom, y_vel)
+        vel_y_denom = R2_kf[1][1] # dim = (denom, y_vel)
+        nom = vel_x_nom + vel_y_nom
+        denom = vel_x_denom + vel_y_denom
+
+        combined_FVAF = 1 - (nom / denom)
+        XY_FVAF.append(combined_FVAF)
+
+    return XY_FVAF
+
+def complete_opposite_bucket_test_cv(models, X_test, y_test, type_of_R2, frag_type):   
+    """
+    """
+    XY_FVAF = []
+    for m in range(len(models)): # but in reality, nModels should/will always be the same as nCrossBuckets
+        
+        if frag_type == "AD" or frag_type == "HV" or frag_type == "Rand":    
+            # n is the index of the bucket with opposite direction and polarity 
+            # (based on the 'combos' variable which specifies bucket labels)
+            if m >= 0 and m <= 3:    
+                n = m + 12
+            elif m >= 4 and m <= 7:
+                n = m + 4
+            elif m >= 8 and m <= 11:
+                n = m - 4
+            elif m >= 12 and m <= 15:
+                n = m - 12
+        
+        elif frag_type == "VM":
+            if m >= 0 and m <=3:
+                n = m + 4
+            elif m >=4 and m <=7:
+                n = m - 4
+
+        curr_X_test = X_test[n]
+        curr_y_test = y_test[n]
+
+        #Get predictions
+        curr_y_test_predicted = models[m].predict(curr_X_test, curr_y_test)
+
+        #Get metrics of fit (see read me for more details on the differences between metrics)
+        # 1st and 2nd entries that correspond to the velocities
+        if type_of_R2 == "score": # Computing single-component FVAF
+            R2_kf = get_R2(curr_y_test, curr_y_test_predicted)
+        elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
+            R2_kf = get_R2_parts(curr_y_test, curr_y_test_predicted)
 
         # Compute combined XY_FVAF
         vel_x_nom = R2_kf[0][0] # dim = (nom, x_vel)
@@ -332,4 +469,48 @@ def opposite_direction_test(models, input, output, training_range, testing_range
 
     return XY_FVAF
 
-            
+def opposite_direction_test_cv(models, X_test, y_test, type_of_R2, frag_type):   
+    
+    XY_FVAF = []
+    # Can only run this test for AD and HV fragments, NOT VM fragments 
+    if frag_type == "AD" or frag_type == "HV" or frag_type == "Rand":    
+
+        for m in range(len(models)):
+            # n is the index of the bucket with opposite polarity 
+            if m >= 0 and m <= 3:    
+                n = m + 4
+            elif m >= 4 and m <= 7:
+                n = m - 4
+            elif m >= 8 and m <= 11:
+                n = m + 4
+            elif m >= 12 and m <= 15:
+                n = m - 4
+
+            curr_X_test = X_test[n]
+            curr_y_test = y_test[n]
+
+            #Get predictions
+            curr_y_test_predicted = models[m].predict(curr_X_test, curr_y_test)
+
+            #Get metrics of fit (see read me for more details on the differences between metrics)
+            # 1st and 2nd entries that correspond to the velocities
+            if type_of_R2 == "score": # Computing single-component FVAF
+                R2_kf = get_R2(curr_y_test, curr_y_test_predicted)
+            elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
+                R2_kf = get_R2_parts(curr_y_test, curr_y_test_predicted)
+
+            # Compute combined XY_FVAF
+            vel_x_nom = R2_kf[0][0] # dim = (nom, x_vel)
+            vel_x_denom = R2_kf[1][0] # dim = (denom, x_vel)
+            vel_y_nom = R2_kf[0][1] # dim = (nom, y_vel)
+            vel_y_denom = R2_kf[1][1] # dim = (denom, y_vel)
+            nom = vel_x_nom + vel_y_nom
+            denom = vel_x_denom + vel_y_denom
+
+            combined_FVAF = 1 - (nom / denom)
+            XY_FVAF.append(combined_FVAF)
+
+    elif frag_type == "VM":
+        XY_FVAF = []
+
+    return XY_FVAF           
