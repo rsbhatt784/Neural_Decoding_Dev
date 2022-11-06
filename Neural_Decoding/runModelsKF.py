@@ -121,6 +121,46 @@ def run_model_kf_cv(X_train, y_train, X_test, y_test, type_of_R2):
     return R2s, models 
 
 
+def run_model_kf_test(X_train, y_train, X_test, y_test, type_of_R2):
+   
+    R2s = []
+    models = []
+    idxList = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+    for i in range(len(X_train)):
+        testIdx = i # the current bucket
+        trainIdx = idxList.copy()
+        trainIdx.pop(i)
+
+        new_X_train_list = [X_train[i] for i in trainIdx]
+        new_y_train_list = [y_train[i] for i in trainIdx]
+        new_X_train = np.concatenate(new_X_train_list, axis=0)
+        new_y_train = np.concatenate(new_y_train_list, axis=0)
+        new_X_test = X_test[testIdx]
+        new_y_test = y_test[testIdx]
+
+        #Declare model
+        model = KalmanFilterDecoder(C=1) #There is one optional parameter (see ReadMe)
+
+        #Fit model
+        model.fit(new_X_train, new_y_train)
+        
+        #Save fitted models for later (i.e. cross-bucket tests)
+        models.append(model)
+    
+        #Get predictions
+        new_y_test_predicted = model.predict(new_X_test, new_y_test)
+
+        #Get metrics of fit (see read me for more details on the differences between metrics)
+        # 1st and 2nd entries that correspond to the velocities
+        if type_of_R2 == "score": # Computing single-component FVAF
+            R2_kf = get_R2(new_y_test, new_y_test_predicted)
+        elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
+            R2_kf = get_R2_parts(new_y_test, new_y_test_predicted)
+        R2s.append(R2_kf)
+
+    return R2s, models 
+
+
 def cross_buckets_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):
     """
     (SIKE) Just need X_valid and y_valid from the cross-bucket in order to predict its kinematics using model trained on the other bucket.
