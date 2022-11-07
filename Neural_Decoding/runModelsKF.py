@@ -160,6 +160,82 @@ def run_model_kf_test(X_train, y_train, X_test, y_test, type_of_R2):
 
     return R2s, models 
 
+def run_model_kf_direction(X_train, y_train, X_test, y_test, type_of_R2):
+   
+    R2s = []
+    models = []
+
+    for m in range(len(X_train)-8):
+        n = m + 8 
+        new_X_train = np.concatenate([X_train[m],X_train[n]], axis=0)
+        new_y_train = np.concatenate([y_train[m],y_train[n]], axis=0)
+        new_X_test = np.concatenate([X_test[m],X_test[n]], axis=0)
+        new_y_test = np.concatenate([y_test[m],y_test[n]], axis=0)
+
+        #Declare model
+        model = KalmanFilterDecoder(C=1) #There is one optional parameter (see ReadMe)
+
+        #Fit model
+        model.fit(new_X_train, new_y_train)
+        
+        #Save fitted models for later (i.e. cross-bucket tests)
+        models.append(model)
+    
+        #Get predictions
+        y_test_predicted = model.predict(new_X_test, new_y_test)
+
+        #Get metrics of fit (see read me for more details on the differences between metrics)
+        # 1st and 2nd entries that correspond to the velocities
+        if type_of_R2 == "score": # Computing single-component FVAF
+            R2_kf = get_R2(new_y_test, y_test_predicted)
+        elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
+            R2_kf = get_R2_parts(new_y_test, y_test_predicted)
+        R2s.append(R2_kf)
+
+    return R2s, models 
+
+def run_model_kf_polarity(X_train, y_train, X_test, y_test, type_of_R2):
+   
+    R2s = []
+    models = []
+
+    for m in range(2):
+        if m == 0:
+            polarityIdx = [0,1,2,3,4,5,6,7]
+        else:
+            polarityIdx = [8,9,10,11,12,13,14,15]
+
+        new_X_train_list = [X_train[i] for i in polarityIdx]
+        new_y_train_list = [y_train[i] for i in polarityIdx]
+        new_X_test_list = [X_test[i] for i in polarityIdx]
+        new_y_test_list = [y_test[i] for i in polarityIdx]
+       
+        new_X_train = np.concatenate(new_X_train_list, axis=0)
+        new_y_train = np.concatenate(new_y_train_list, axis=0)
+        new_X_test = np.concatenate(new_X_test_list, axis=0)
+        new_y_test = np.concatenate(new_y_test_list, axis=0)
+
+        #Declare model
+        model = KalmanFilterDecoder(C=1) #There is one optional parameter (see ReadMe)
+
+        #Fit model
+        model.fit(new_X_train, new_y_train)
+        
+        #Save fitted models for later (i.e. cross-bucket tests)
+        models.append(model)
+    
+        #Get predictions
+        y_test_predicted = model.predict(new_X_test, new_y_test)
+
+        #Get metrics of fit (see read me for more details on the differences between metrics)
+        # 1st and 2nd entries that correspond to the velocities
+        if type_of_R2 == "score": # Computing single-component FVAF
+            R2_kf = get_R2(new_y_test, y_test_predicted)
+        elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
+            R2_kf = get_R2_parts(new_y_test, y_test_predicted)
+        R2s.append(R2_kf)
+
+    return R2s, models 
 
 def cross_buckets_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):
     """
