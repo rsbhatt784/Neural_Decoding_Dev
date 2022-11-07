@@ -237,6 +237,38 @@ def run_model_kf_polarity(X_train, y_train, X_test, y_test, type_of_R2):
 
     return R2s, models 
 
+def run_model_kf_polarity_test(models, X_test, y_test):
+   
+    R2s = []
+    for m in range(2):
+        if m == 0:
+            polarityIdx = [0,1,2,3,4,5,6,7]
+        else:
+            polarityIdx = [8,9,10,11,12,13,14,15]
+
+        new_X_test_list = [X_test[i] for i in polarityIdx]
+        new_y_test_list = [y_test[i] for i in polarityIdx]
+       
+        new_X_test = np.concatenate(new_X_test_list, axis=0)
+        new_y_test = np.concatenate(new_y_test_list, axis=0)
+
+        #Get predictions
+        y_test_predicted = models[m].predict(new_X_test, new_y_test)
+        R2_kf = get_R2_parts(new_y_test, y_test_predicted)
+
+        # Compute combined XY_FVAF
+        vel_x_nom = R2_kf[0][0] 
+        vel_x_denom = R2_kf[1][0]
+        vel_y_nom = R2_kf[0][1] 
+        vel_y_denom = R2_kf[1][1]
+        nom = vel_x_nom + vel_y_nom
+        denom = vel_x_denom + vel_y_denom
+
+        combined_FVAF = 1 - (nom / denom)
+        R2s.append(combined_FVAF)
+
+    return R2s 
+
 def cross_buckets_test(models, input, output, training_range, testing_range, valid_range, type_of_R2):
     """
     (SIKE) Just need X_valid and y_valid from the cross-bucket in order to predict its kinematics using model trained on the other bucket.
@@ -269,8 +301,6 @@ def cross_buckets_test(models, input, output, training_range, testing_range, val
                     R2_kf = get_R2(y_valid, y_valid_predicted)
                 elif type_of_R2 == "parts": # Can be used to later compute combined FVAF
                     R2_kf = get_R2_parts(y_valid, y_valid_predicted)
-                    # print(R2_kf)
-                    # print(R2_kf.shape)
                 R2s.append(R2_kf)
 
                 # Compute combined XY_FVAF
