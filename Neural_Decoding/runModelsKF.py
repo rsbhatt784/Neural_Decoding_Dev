@@ -166,8 +166,16 @@ def run_model_kf_direction(X_train, y_train, X_test, y_test, type_of_R2):
     models = []
 
     for m in range(len(X_train)-8):
-        n = m + 8 
-        new_X_train = np.concatenate([X_train[m],X_train[n]], axis=0)
+        # n = m + 8 
+        # new_X_train = np.concatenate([X_train[m],X_train[n]], axis=0)
+        # new_y_train = np.concatenate([y_train[m],y_train[n]], axis=0)
+        # new_X_test = np.concatenate([X_test[m],X_test[n]], axis=0)
+        # new_y_test = np.concatenate([y_test[m],y_test[n]], axis=0)
+
+        n = m + 8 # same direction, opposite polarity
+        a = (m - 1) % 8
+        b = (m + 1) % 8
+        new_X_train = np.concatenate([X_train[m],X_train[n], X_train[a], X_train[b]], axis=0)
         new_y_train = np.concatenate([y_train[m],y_train[n]], axis=0)
         new_X_test = np.concatenate([X_test[m],X_test[n]], axis=0)
         new_y_test = np.concatenate([y_test[m],y_test[n]], axis=0)
